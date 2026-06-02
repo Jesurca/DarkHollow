@@ -24,8 +24,15 @@ public class PlayerAttack : MonoBehaviour
 
     bool IsShootPressed()
     {
-        return Keyboard.current != null &&
+        bool spacePressed =
+            Keyboard.current != null &&
             Keyboard.current.spaceKey.wasPressedThisFrame;
+
+        bool leftClickPressed =
+            Mouse.current != null &&
+            Mouse.current.leftButton.wasPressedThisFrame;
+
+        return spacePressed || leftClickPressed;
     }
 
     public void EnableShooting()

@@ -31,7 +31,17 @@ public class EnemyAI : MonoBehaviour
     Invisibility invisibility;
     float nextDamageTime;
     float nextRepathTime;
+    float nextWanderTime;
     bool isKnockedBack;
+    Vector3 wanderTarget;
+
+    static float frozenUntilTime;
+
+    public static void FreezeAll(float duration)
+    {
+        frozenUntilTime = Mathf.Max(frozenUntilTime, Time.time + duration);
+        Debug.Log("Reloj activado. Enemigos congelados por " + duration + " segundos.");
+    }
 
     void Awake()
     {
@@ -55,14 +65,17 @@ public class EnemyAI : MonoBehaviour
             return;
         }
 
+        if (Time.time < frozenUntilTime)
+        {
+            StopMovement();
+            TryDamagePlayer();
+            return;
+        }
+
         if (invisibility != null &&
             invisibility.IsInvisible())
         {
-            if (agent != null && agent.enabled && agent.isOnNavMesh)
-            {
-                agent.ResetPath();
-            }
-
+            WanderWhilePlayerIsInvisible();
             return;
         }
 
@@ -110,6 +123,8 @@ public class EnemyAI : MonoBehaviour
 
         if (agent != null && agent.enabled && agent.isOnNavMesh)
         {
+            agent.isStopped = false;
+
             if (Time.time >= nextRepathTime)
             {
                 agent.SetDestination(player.position);
@@ -136,9 +151,78 @@ public class EnemyAI : MonoBehaviour
         transform.rotation = Quaternion.LookRotation(direction);
     }
 
+    void WanderWhilePlayerIsInvisible()
+    {
+        if (isKnockedBack)
+        {
+            return;
+        }
+
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
+        {
+            if (!agent.hasPath || Time.time >= nextWanderTime)
+            {
+                Vector3 randomDirection =
+                    Random.insideUnitSphere * 4f + transform.position;
+
+                if (NavMesh.SamplePosition(
+                    randomDirection,
+                    out NavMeshHit hit,
+                    4f,
+                    NavMesh.AllAreas
+                ))
+                {
+                    agent.isStopped = false;
+                    agent.SetDestination(hit.position);
+                }
+
+                nextWanderTime = Time.time + Random.Range(1.5f, 3f);
+            }
+
+            return;
+        }
+
+        if (Time.time >= nextWanderTime)
+        {
+            Vector2 random = Random.insideUnitCircle.normalized;
+            wanderTarget = transform.position + new Vector3(random.x, 0f, random.y) * 3f;
+            nextWanderTime = Time.time + Random.Range(1.5f, 3f);
+        }
+
+        Vector3 direction = wanderTarget - transform.position;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.05f)
+        {
+            return;
+        }
+
+        transform.position +=
+            direction.normalized *
+            fallbackMoveSpeed *
+            0.6f *
+            Time.deltaTime;
+
+        transform.rotation = Quaternion.LookRotation(direction);
+    }
+
+    void StopMovement()
+    {
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
+        {
+            agent.ResetPath();
+            agent.isStopped = true;
+        }
+    }
+
     void TryDamagePlayer()
     {
         if (player == null || playerHealth == null)
+        {
+            return;
+        }
+
+        if (invisibility != null && invisibility.IsInvisible())
         {
             return;
         }

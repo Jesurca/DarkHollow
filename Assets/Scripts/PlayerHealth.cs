@@ -150,6 +150,19 @@ public class PlayerHealth : MonoBehaviour
         hud.playerHealth = this;
     }
 
+    void EnsurePotionSpawner()
+    {
+        if (FindAnyObjectByType<HealthPotionSpawner>() != null)
+        {
+            return;
+        }
+
+        GameObject spawnerObject = new GameObject("Sistema_Spawner_Items");
+        HealthPotionSpawner spawner =
+            spawnerObject.AddComponent<HealthPotionSpawner>();
+        spawner.playerHealth = this;
+    }
+
     class MaterialColorState
     {
         readonly Material material;

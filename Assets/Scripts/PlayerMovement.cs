@@ -110,22 +110,26 @@ public class PlayerMovement : MonoBehaviour
 
         if (Keyboard.current != null)
         {
-            if (Keyboard.current.aKey.isPressed)
+            if (Keyboard.current.aKey.isPressed ||
+                Keyboard.current.leftArrowKey.isPressed)
             {
                 input.x -= 1f;
             }
 
-            if (Keyboard.current.dKey.isPressed)
+            if (Keyboard.current.dKey.isPressed ||
+                Keyboard.current.rightArrowKey.isPressed)
             {
                 input.x += 1f;
             }
 
-            if (Keyboard.current.sKey.isPressed)
+            if (Keyboard.current.sKey.isPressed ||
+                Keyboard.current.downArrowKey.isPressed)
             {
                 input.y -= 1f;
             }
 
-            if (Keyboard.current.wKey.isPressed)
+            if (Keyboard.current.wKey.isPressed ||
+                Keyboard.current.upArrowKey.isPressed)
             {
                 input.y += 1f;
             }
