@@ -5,12 +5,15 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/NivelBase.unity
-    guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
-    path: Assets/Scenes/NivelJuego.unity
+    path: Assets/Juego/Escenas/Menu.unity
+    guid: de74c62bb4da2744398bfc7b4202f0bd
+  - enabled: 1
+    path: Assets/Juego/Escenas/NivelJuego.unity
     guid: eaff5c8fc304661408946fbc71dd67b5
+  - enabled: 1
+    path: Assets/Juego/Escenas/Creditos.unity
+    guid: b63b5c74e633aa740b22ac025688e1e5
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
