@@ -1,5 +1,6 @@
 
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections;
 
 public class Invisibility : MonoBehaviour
@@ -12,7 +13,8 @@ public class Invisibility : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.H))
+        if (Keyboard.current != null &&
+            Keyboard.current.hKey.wasPressedThisFrame)
         {
             if (!invisible)
             {

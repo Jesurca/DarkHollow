@@ -4,74 +4,212 @@ using UnityEngine.AI;
 
 public class EnemyAI : MonoBehaviour
 {
-    private Transform player;
-
-    private NavMeshAgent agent;
-
-    private Invisibility invisibility;
-
+    [Tooltip("Cantidad de vida que pierde el jugador cuando este enemigo logra atacarlo.")]
     public int damage = 1;
 
-    private bool canDamage = true;
+    [Tooltip("Distancia maxima en metros para que el enemigo pueda hacer dano. Menor valor = debe estar mas pegado al jugador.")]
+    public float attackRange = 0.42f;
+
+    [Tooltip("Tiempo en segundos entre un golpe y el siguiente. Evita que quite toda la vida instantaneamente.")]
+    public float attackCooldown = 1.5f;
+
+    [Tooltip("Velocidad usada si el NavMesh falla o el enemigo no esta sobre una zona navegable.")]
+    public float fallbackMoveSpeed = 1.8f;
+
+    [Tooltip("Cada cuantos segundos recalcula el destino hacia el jugador cuando usa NavMesh.")]
+    public float repathInterval = 0.2f;
+
+    [Tooltip("Distancia en metros que el enemigo retrocede despues de hacer dano.")]
+    public float knockbackDistance = 1.4f;
+
+    [Tooltip("Duracion en segundos del retroceso despues de hacer dano.")]
+    public float knockbackDuration = 0.25f;
+
+    Transform player;
+    PlayerHealth playerHealth;
+    NavMeshAgent agent;
+    Invisibility invisibility;
+    float nextDamageTime;
+    float nextRepathTime;
+    bool isKnockedBack;
+
+    void Awake()
+    {
+        agent = GetComponent<NavMeshAgent>();
+    }
 
     void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
-
-        GameObject playerObject =
-            GameObject.FindGameObjectWithTag("Player");
-
-        if (playerObject != null)
-        {
-            player = playerObject.transform;
-
-            invisibility =
-                player.GetComponent<Invisibility>();
-        }
+        FindPlayer();
     }
 
     void Update()
     {
         if (player == null)
+        {
+            FindPlayer();
+        }
+
+        if (player == null)
+        {
             return;
+        }
 
         if (invisibility != null &&
             invisibility.IsInvisible())
         {
-            agent.ResetPath();
+            if (agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                agent.ResetPath();
+            }
 
             return;
         }
 
-        agent.SetDestination(player.position);
+        MoveToPlayer();
+        TryDamagePlayer();
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (!canDamage)
-            return;
-
         if (other.CompareTag("Player"))
         {
-            PlayerHealth health =
-                other.GetComponent<PlayerHealth>();
-
-            if (health != null)
-            {
-                health.TakeDamage(damage);
-
-                StartCoroutine(DamageCooldown());
-            }
+            TryDamagePlayer();
         }
     }
 
-    System.Collections.IEnumerator DamageCooldown()
+    private void OnTriggerStay(Collider other)
     {
-        canDamage = false;
+        if (other.CompareTag("Player"))
+        {
+            TryDamagePlayer();
+        }
+    }
 
-        yield return new WaitForSeconds(1f);
+    void FindPlayer()
+    {
+        GameObject playerObject =
+            GameObject.FindGameObjectWithTag("Player");
 
-        canDamage = true;
+        if (playerObject == null)
+        {
+            return;
+        }
+
+        player = playerObject.transform;
+        playerHealth = playerObject.GetComponent<PlayerHealth>();
+        invisibility = playerObject.GetComponent<Invisibility>();
+    }
+
+    void MoveToPlayer()
+    {
+        if (isKnockedBack)
+        {
+            return;
+        }
+
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
+        {
+            if (Time.time >= nextRepathTime)
+            {
+                agent.SetDestination(player.position);
+                nextRepathTime = Time.time + repathInterval;
+            }
+
+            return;
+        }
+
+        Vector3 direction = player.position - transform.position;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.01f)
+        {
+            return;
+        }
+
+        Vector3 movement =
+            direction.normalized *
+            fallbackMoveSpeed *
+            Time.deltaTime;
+
+        transform.position += movement;
+        transform.rotation = Quaternion.LookRotation(direction);
+    }
+
+    void TryDamagePlayer()
+    {
+        if (player == null || playerHealth == null)
+        {
+            return;
+        }
+
+        if (Time.time < nextDamageTime)
+        {
+            return;
+        }
+
+        Vector3 enemyAttackPoint = transform.position + Vector3.up * 0.5f;
+        Vector3 playerAttackPoint = player.position + Vector3.up * 0.5f;
+        Vector3 delta = playerAttackPoint - enemyAttackPoint;
+        delta.y = 0f;
+
+        if (delta.sqrMagnitude > attackRange * attackRange)
+        {
+            return;
+        }
+
+        playerHealth.TakeDamage(damage);
+        nextDamageTime = Time.time + attackCooldown;
+
+        StartCoroutine(KnockbackFromPlayer());
+    }
+
+    System.Collections.IEnumerator KnockbackFromPlayer()
+    {
+        if (player == null)
+        {
+            yield break;
+        }
+
+        isKnockedBack = true;
+
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
+        {
+            agent.ResetPath();
+            agent.isStopped = true;
+        }
+
+        Vector3 away = transform.position - player.position;
+        away.y = 0f;
+
+        if (away.sqrMagnitude < 0.01f)
+        {
+            away = -transform.forward;
+        }
+
+        away.Normalize();
+
+        Vector3 startPosition = transform.position;
+        Vector3 targetPosition = startPosition + away * knockbackDistance;
+        float elapsed = 0f;
+
+        while (elapsed < knockbackDuration)
+        {
+            float t = elapsed / knockbackDuration;
+            transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        transform.position = targetPosition;
+
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
+        {
+            agent.Warp(transform.position);
+            agent.isStopped = false;
+        }
+
+        isKnockedBack = false;
     }
 }
 
